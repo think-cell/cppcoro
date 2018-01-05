@@ -103,28 +103,54 @@ TEST_CASE("send/recv TCP/IPv4")
 	{
 		auto acceptingSocket = socket::create_tcpv4(ioSvc);
 
+		MESSAGE("server waiting for connection");
+
 		co_await listeningSocket.accept(acceptingSocket);
+
+		MESSAGE("server got a connection");
 
 		std::uint8_t buffer[64];
 		std::size_t bytesReceived;
 		do
 		{
+			MESSAGE("server receiving " << sizeof(buffer) << " bytes");
+
 			bytesReceived = co_await acceptingSocket.recv(buffer, sizeof(buffer));
+
+			MESSAGE("server received " << bytesReceived << " bytes");
+
 			if (bytesReceived > 0)
 			{
-				std::size_t bytesSent = 0;
+				CHECK(bytesReceived <= sizeof(buffer));
+				std::size_t totalBytesSent = 0;
 				do
 				{
-					bytesSent += co_await acceptingSocket.send(
-						buffer + bytesSent,
-						bytesReceived - bytesSent);
-				} while (bytesSent < bytesReceived);
+					auto bytesRemaining = bytesReceived - totalBytesSent;
+
+					MESSAGE("server sending " << bytesRemaining << " bytes");
+
+					auto bytesSent = co_await acceptingSocket.send(
+						buffer + totalBytesSent,
+						bytesRemaining);
+
+					MESSAGE("server sent " << bytesSent << " bytes");
+
+					CHECK(bytesSent <= bytesReceived - totalBytesSent);
+
+					totalBytesSent += bytesSent;
+				} while (totalBytesSent < bytesReceived);
 			}
 		} while (bytesReceived > 0);
 
+		MESSAGE("server closing send");
+
 		acceptingSocket.close_send();
 
+		MESSAGE("server disconnecting");
+
 		co_await acceptingSocket.disconnect();
+
+		MESSAGE("server disconnected");
 
 		co_return 0;
 	};
@@ -135,7 +161,11 @@ TEST_CASE("send/recv TCP/IPv4")
 
 		connectingSocket.bind(ipv4_endpoint{});
 
+		MESSAGE("client connecting");
+
 		co_await connectingSocket.connect(listeningSocket.local_endpoint());
+
+		MESSAGE("client connected");
 
 		auto receive = [&]() -> task<int>
 		{
@@ -144,7 +174,12 @@ TEST_CASE("send/recv TCP/IPv4")
 			std::size_t bytesReceived;
 			do
 			{
+				MESSAGE("client receiving " << sizeof(buffer) << " bytes");
+
 				bytesReceived = co_await connectingSocket.recv(buffer, sizeof(buffer));
+
+				MESSAGE("client received " << bytesReceived << " bytes (total " << (bytesReceived + totalBytesReceived) << " bytes)");
+
 				for (std::size_t i = 0; i < bytesReceived; ++i)
 				{
 					std::uint64_t byteIndex = totalBytesReceived + i;
@@ -154,6 +189,8 @@ TEST_CASE("send/recv TCP/IPv4")
 
 				totalBytesReceived += bytesReceived;
 			} while (bytesReceived > 0);
+
+			MESSAGE("client received end of stream");
 
 			CHECK(totalBytesReceived == 1000);
 
@@ -170,12 +207,24 @@ TEST_CASE("send/recv TCP/IPv4")
 					buffer[j] = 'a' + ((i + j) % 26);
 				}
 
-				std::size_t bytesSent = 0;
+				std::size_t totalBytesSent = 0;
 				do
 				{
-					bytesSent += co_await connectingSocket.send(buffer + bytesSent, sizeof(buffer) - bytesSent);
-				} while (bytesSent < sizeof(buffer));
+					auto bytesRemaining = sizeof(buffer) - totalBytesSent;
+
+					MESSAGE("client sending " << bytesRemaining << " bytes");
+
+					auto bytesSent = co_await connectingSocket.send(buffer + totalBytesSent, bytesRemaining);
+
+					MESSAGE("client sent " << bytesSent << " bytes");
+
+					CHECK(bytesSent <= bytesRemaining);
+
+					totalBytesSent += bytesSent;
+				} while (totalBytesSent < sizeof(buffer));
 			}
+
+			MESSAGE("client closing send");
 
 			connectingSocket.close_send();
 
@@ -184,7 +233,11 @@ TEST_CASE("send/recv TCP/IPv4")
 
 		co_await when_all(send(), receive());
 
+		MESSAGE("client disconnecting");
+
 		co_await connectingSocket.disconnect();
+
+		MESSAGE("client disconnected");
 
 		co_return 0;
 	};

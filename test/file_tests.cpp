@@ -16,6 +16,7 @@
 #include <random>
 #include <thread>
 #include <cassert>
+#include <iostream>
 
 #include "io_service_fixture.hpp"
 
@@ -71,6 +72,9 @@ namespace
 	};
 }
 
+#undef MESSAGE
+#define MESSAGE(...) do { std::printf(__VA_ARGS__); std::putchar('\n'); std::fflush(stdout); } while(0)
+
 TEST_CASE_FIXTURE(temp_dir_fixture, "write a file")
 {
 	auto filePath = temp_dir() / "foo";
@@ -96,7 +100,7 @@ TEST_CASE_FIXTURE(temp_dir_fixture, "write a file")
 		{
 			auto offset = chunk * sizeof(buffer);
 
-			MESSAGE("writing " << sizeof(buffer) << " bytes at offset " << offset);
+			MESSAGE("writing 1024 bytes");
 
 			auto bytesWritten = co_await f.write(offset, buffer, sizeof(buffer));
 
@@ -120,11 +124,11 @@ TEST_CASE_FIXTURE(temp_dir_fixture, "write a file")
 
 		for (std::uint64_t i = 0; i < fileSize;)
 		{
-			MESSAGE("reading " << sizeof(buffer) << " bytes at offset " << i);
+			MESSAGE("reading 500 bytes at offset");
 
 			auto bytesRead = co_await f.read(i, buffer, sizeof(buffer));
 
-			MESSAGE("read " << bytesRead << " bytes");
+			MESSAGE("read %zu bytes", bytesRead);
 
 			for (size_t j = 0; j < bytesRead; ++j, ++i)
 			{

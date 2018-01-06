@@ -85,7 +85,7 @@ TEST_CASE_FIXTURE(temp_dir_fixture, "write a file")
 
 		auto f = cppcoro::write_only_file::open(ioService, filePath);
 
-		MESSAGE("checking size");
+		//MESSAGE("checking size");
 
 		CHECK(f.size() == 0);
 
@@ -100,7 +100,7 @@ TEST_CASE_FIXTURE(temp_dir_fixture, "write a file")
 		{
 			auto offset = chunk * sizeof(buffer);
 
-			MESSAGE("writing 1024 bytes");
+			//MESSAGE("writing 1024 bytes");
 
 			auto bytesWritten = co_await f.write(offset, buffer, sizeof(buffer));
 
@@ -124,11 +124,11 @@ TEST_CASE_FIXTURE(temp_dir_fixture, "write a file")
 
 		for (std::uint64_t i = 0; i < fileSize;)
 		{
-			MESSAGE("reading 500 bytes at offset");
+			//MESSAGE("reading 500 bytes at offset");
 
 			auto bytesRead = co_await f.read(i, buffer, sizeof(buffer));
 
-			MESSAGE("read %zu bytes", bytesRead);
+			//MESSAGE("read %zu bytes", bytesRead);
 
 			for (size_t j = 0; j < bytesRead; ++j, ++i)
 			{
@@ -136,7 +136,7 @@ TEST_CASE_FIXTURE(temp_dir_fixture, "write a file")
 			}
 		}
 
-		MESSAGE("closing read-only file");
+		//MESSAGE("closing read-only file");
 	};
 
 	auto run = [&]() -> cppcoro::task<>

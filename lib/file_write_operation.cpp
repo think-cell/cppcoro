@@ -5,9 +5,12 @@
 
 #include <cppcoro/file_write_operation.hpp>
 
+
 #if CPPCORO_OS_WINNT
 # define WIN32_LEAN_AND_MEAN
 # include <Windows.h>
+
+#include <cstdio>
 
 bool cppcoro::file_write_operation_impl::try_start(
 	cppcoro::detail::win32_overlapped_operation_base& operation) noexcept
@@ -36,8 +39,14 @@ bool cppcoro::file_write_operation_impl::try_start(
 		operation.m_errorCode = errorCode;
 		operation.m_numberOfBytesTransferred = numberOfBytesWritten;
 
+		std::printf("write completed sync: %u\n", numberOfBytesWritten);
+		std::fflush(stdout);
+
 		return false;
 	}
+
+	std::printf("write will complete async\n");
+	std::fflush(stdout);
 
 	return true;
 }

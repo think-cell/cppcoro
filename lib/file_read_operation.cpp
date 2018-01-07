@@ -9,6 +9,8 @@
 # define WIN32_LEAN_AND_MEAN
 # include <Windows.h>
 
+#include <cstdio>
+
 bool cppcoro::file_read_operation_impl::try_start(
 	cppcoro::detail::win32_overlapped_operation_base& operation) noexcept
 {
@@ -36,8 +38,14 @@ bool cppcoro::file_read_operation_impl::try_start(
 		operation.m_errorCode = errorCode;
 		operation.m_numberOfBytesTransferred = numberOfBytesRead;
 
+		std::printf("read completed sync: %u\n", numberOfBytesRead);
+		std::fflush(stdout);
+
 		return false;
 	}
+
+	std::printf("read will complete async\n");
+	std::fflush(stdout);
 
 	return true;
 }

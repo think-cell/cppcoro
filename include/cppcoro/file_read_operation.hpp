@@ -12,6 +12,7 @@
 #include <atomic>
 #include <optional>
 #include <experimental/coroutine>
+#include <cstdio>
 
 #if CPPCORO_OS_WINNT
 # include <cppcoro/detail/win32.hpp>
@@ -62,6 +63,12 @@ namespace cppcoro
 		friend class cppcoro::detail::win32_overlapped_operation<file_read_operation>;
 
 		bool try_start() noexcept { return m_impl.try_start(*this); }
+		std::size_t get_result()
+		{
+			std::printf("read completed: %u\n", m_numberOfBytesTransferred);
+			std::fflush(stdout);
+			return  cppcoro::detail::win32_overlapped_operation<file_read_operation>::get_result();
+		}
 
 		file_read_operation_impl m_impl;
 

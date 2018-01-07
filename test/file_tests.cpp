@@ -72,20 +72,13 @@ namespace
 	};
 }
 
-#undef MESSAGE
-#define MESSAGE(...) do { std::printf(__VA_ARGS__); std::putchar('\n'); std::fflush(stdout); } while(0)
-
 TEST_CASE_FIXTURE(temp_dir_fixture, "write a file")
 {
 	auto filePath = temp_dir() / "foo";
 
 	auto write = [&](cppcoro::io_service& ioService) -> cppcoro::task<>
 	{
-		//MESSAGE("opening file for write");
-
-		auto f = cppcoro::write_only_file::open(ioService, filePath);
-
-		//MESSAGE("checking size");
+		auto f = cppcoro::write_only_file::open(ioService, filePath, cppcoro::file_open_mode::create_always);
 
 		CHECK(f.size() == 0);
 
@@ -100,20 +93,14 @@ TEST_CASE_FIXTURE(temp_dir_fixture, "write a file")
 		{
 			auto offset = chunk * sizeof(buffer);
 
-			//MESSAGE("writing 1024 bytes");
-
 			auto bytesWritten = co_await f.write(offset, buffer, sizeof(buffer));
 
 			CHECK(bytesWritten == sizeof(buffer));
 		}
-
-		//MESSAGE("closing write-only file");
 	};
 
 	auto read = [&](cppcoro::io_service& io) -> cppcoro::task<>
 	{
-		MESSAGE("opening file for read");
-
 		auto f = cppcoro::read_only_file::open(io, filePath);
 
 		const auto fileSize = f.size();
@@ -124,19 +111,15 @@ TEST_CASE_FIXTURE(temp_dir_fixture, "write a file")
 
 		for (std::uint64_t i = 0; i < fileSize;)
 		{
-			//MESSAGE("reading 500 bytes at offset");
-
 			auto bytesRead = co_await f.read(i, buffer, sizeof(buffer));
 
-			MESSAGE("read %zu bytes", bytesRead);
+			CHECK(bytesRead <= sizeof(buffer));
 
 			for (size_t j = 0; j < bytesRead; ++j, ++i)
 			{
 				CHECK(buffer[j] == ('a' + ((i % 1024) % 26)));
 			}
 		}
-
-		//MESSAGE("closing read-only file");
 	};
 
 	auto run = [&]() -> cppcoro::task<>

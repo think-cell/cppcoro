@@ -36,21 +36,26 @@ namespace
 	}
 }
 
-cppcoro::async_auto_reset_event::async_auto_reset_event(bool initiallySet) noexcept
-	: m_state(initiallySet ? local::set_increment : 0)
+cppcoro::async_semaphore::async_semaphore(std::uint32_t initial) noexcept
+	: m_state(initial*local::set_increment)
 	, m_newWaiters(nullptr)
 	, m_waiters(nullptr)
 {
 }
 
-cppcoro::async_auto_reset_event::~async_auto_reset_event()
+cppcoro::async_auto_reset_event::async_auto_reset_event(bool initiallySet) noexcept
+	: async_semaphore(initiallySet)
+{
+}
+
+cppcoro::async_semaphore::~async_semaphore()
 {
 	assert(m_newWaiters.load(std::memory_order_relaxed) == nullptr);
 	assert(m_waiters == nullptr);
 }
 
 cppcoro::async_auto_reset_event_operation
-cppcoro::async_auto_reset_event::operator co_await() const noexcept
+cppcoro::async_semaphore::operator co_await() const noexcept
 {
 	std::uint64_t oldState = m_state.load(std::memory_order_relaxed);
 	if (local::get_set_count(oldState) > local::get_waiter_count(oldState))
@@ -71,6 +76,11 @@ cppcoro::async_auto_reset_event::operator co_await() const noexcept
 	return async_auto_reset_event_operation{ *this };
 }
 
+void cppcoro::async_semaphore::set() noexcept
+{
+	resume_waiters_if_locked(m_state.fetch_add(local::set_increment, std::memory_order_acq_rel));
+}
+
 void cppcoro::async_auto_reset_event::set() noexcept
 {
 	std::uint64_t oldState = m_state.load(std::memory_order_relaxed);
@@ -89,6 +99,11 @@ void cppcoro::async_auto_reset_event::set() noexcept
 		std::memory_order_acq_rel,
 		std::memory_order_acquire));
 
+	resume_waiters_if_locked(oldState);
+}
+
+void cppcoro::async_semaphore::resume_waiters_if_locked(const std::uint64_t oldState) const noexcept
+{
 	// Did we transition from non-zero waiters and zero set-count
 	// to non-zero set-count?
 	// If so then we acquired the lock and are responsible for resuming waiters.
@@ -117,7 +132,7 @@ void cppcoro::async_auto_reset_event::reset() noexcept
 	// Not set. Nothing to do.
 }
 
-void cppcoro::async_auto_reset_event::resume_waiters(
+void cppcoro::async_semaphore::resume_waiters(
 	std::uint64_t initialState) const noexcept
 {
 	async_auto_reset_event_operation* waitersToResumeList = nullptr;
@@ -229,7 +244,7 @@ cppcoro::async_auto_reset_event_operation::async_auto_reset_event_operation() no
 {}
 
 cppcoro::async_auto_reset_event_operation::async_auto_reset_event_operation(
-	const async_auto_reset_event& event) noexcept
+	const async_semaphore& event) noexcept
 	: m_event(&event)
 	, m_refCount(2)
 {}

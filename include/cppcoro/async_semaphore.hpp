@@ -35,7 +35,7 @@ namespace cppcoro
 		}
 	}
 
-	class async_auto_reset_event_operation;
+	class async_semaphore_acquire_operation;
 
 	class async_semaphore
 	{
@@ -55,7 +55,7 @@ namespace cppcoro
 		///
 		/// Note that the coroutine may be resumed inside a call to 'set()'
 		/// or inside another thread's call to 'operator co_await()'.
-		async_auto_reset_event_operation operator co_await() const noexcept;
+		async_semaphore_acquire_operation operator co_await() const noexcept;
 
 		/// Set the state of the event to 'set'.
 		///
@@ -75,25 +75,25 @@ namespace cppcoro
 
 	private:
 
-		friend class async_auto_reset_event_operation;
+		friend class async_semaphore_acquire_operation;
 
 		void resume_waiters(std::uint64_t initialState) const noexcept;
 
-		mutable std::atomic<async_auto_reset_event_operation*> m_newWaiters;
+		mutable std::atomic<async_semaphore_acquire_operation*> m_newWaiters;
 
-		mutable async_auto_reset_event_operation* m_waiters;
+		mutable async_semaphore_acquire_operation* m_waiters;
 
 	};
 
-	class async_auto_reset_event_operation
+	class async_semaphore_acquire_operation
 	{
 	public:
 
-		async_auto_reset_event_operation() noexcept;
+		async_semaphore_acquire_operation() noexcept;
 
-		explicit async_auto_reset_event_operation(const async_semaphore& event) noexcept;
+		explicit async_semaphore_acquire_operation(const async_semaphore& event) noexcept;
 
-		async_auto_reset_event_operation(const async_auto_reset_event_operation& other) noexcept;
+		async_semaphore_acquire_operation(const async_semaphore_acquire_operation& other) noexcept;
 
 		bool await_ready() const noexcept { return m_event == nullptr; }
 		bool await_suspend(std::experimental::coroutine_handle<> awaiter) noexcept;
@@ -104,7 +104,7 @@ namespace cppcoro
 		friend class async_semaphore;
 
 		const async_semaphore* m_event;
-		async_auto_reset_event_operation* m_next;
+		async_semaphore_acquire_operation* m_next;
 		std::experimental::coroutine_handle<> m_awaiter;
 		std::atomic<std::uint32_t> m_refCount;
 	};

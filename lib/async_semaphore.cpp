@@ -23,7 +23,7 @@ cppcoro::async_semaphore::~async_semaphore()
 	assert(m_waiters == nullptr);
 }
 
-cppcoro::async_auto_reset_event_operation
+cppcoro::async_semaphore_acquire_operation
 cppcoro::async_semaphore::operator co_await() const noexcept
 {
 	std::uint64_t oldState = m_state.load(std::memory_order_relaxed);
@@ -38,11 +38,11 @@ cppcoro::async_semaphore::operator co_await() const noexcept
 		{
 			// Acquired the event, return an operation object that
 			// won't suspend.
-			return async_auto_reset_event_operation{};
+			return async_semaphore_acquire_operation{};
 		}
 	}
 
-	return async_auto_reset_event_operation{ *this };
+	return async_semaphore_acquire_operation{ *this };
 }
 
 void cppcoro::async_semaphore::set() noexcept
@@ -65,8 +65,8 @@ void cppcoro::async_semaphore::resume_waiters_if_locked(const std::uint64_t oldS
 void cppcoro::async_semaphore::resume_waiters(
 	std::uint64_t initialState) const noexcept
 {
-	async_auto_reset_event_operation* waitersToResumeList = nullptr;
-	async_auto_reset_event_operation** waitersToResumeListEnd = &waitersToResumeList;
+	async_semaphore_acquire_operation* waitersToResumeList = nullptr;
+	async_semaphore_acquire_operation** waitersToResumeListEnd = &waitersToResumeList;
 
 	std::uint32_t waiterCountToResume = async_semaphore_detail::get_resumable_waiter_count(initialState);
 
@@ -169,29 +169,29 @@ void cppcoro::async_semaphore::resume_waiters(
 	} while (waitersToResumeList != nullptr);
 }
 
-cppcoro::async_auto_reset_event_operation::async_auto_reset_event_operation() noexcept
+cppcoro::async_semaphore_acquire_operation::async_semaphore_acquire_operation() noexcept
 	: m_event(nullptr)
 {}
 
-cppcoro::async_auto_reset_event_operation::async_auto_reset_event_operation(
+cppcoro::async_semaphore_acquire_operation::async_semaphore_acquire_operation(
 	const async_semaphore& event) noexcept
 	: m_event(&event)
 	, m_refCount(2)
 {}
 
-cppcoro::async_auto_reset_event_operation::async_auto_reset_event_operation(
-	const async_auto_reset_event_operation& other) noexcept
+cppcoro::async_semaphore_acquire_operation::async_semaphore_acquire_operation(
+	const async_semaphore_acquire_operation& other) noexcept
 	: m_event(other.m_event)
 	, m_refCount(2)
 {}
 
-bool cppcoro::async_auto_reset_event_operation::await_suspend(
+bool cppcoro::async_semaphore_acquire_operation::await_suspend(
 	std::experimental::coroutine_handle<> awaiter) noexcept
 {
 	m_awaiter = awaiter;
 
 	// Queue the waiter to the m_newWaiters list.
-	async_auto_reset_event_operation* head = m_event->m_newWaiters.load(std::memory_order_relaxed);
+	async_semaphore_acquire_operation* head = m_event->m_newWaiters.load(std::memory_order_relaxed);
 	do
 	{
 		m_next = head;

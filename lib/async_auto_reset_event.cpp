@@ -37,7 +37,7 @@ namespace
 }
 
 cppcoro::async_auto_reset_event::async_auto_reset_event(bool initiallySet) noexcept
-	: async_semaphore(initiallySet)
+	: async_semaphore(initiallySet ? 1 : 0)
 {
 }
 

@@ -43,11 +43,6 @@ cppcoro::async_semaphore::async_semaphore(std::uint32_t initial) noexcept
 {
 }
 
-cppcoro::async_auto_reset_event::async_auto_reset_event(bool initiallySet) noexcept
-	: async_semaphore(initiallySet)
-{
-}
-
 cppcoro::async_semaphore::~async_semaphore()
 {
 	assert(m_newWaiters.load(std::memory_order_relaxed) == nullptr);
@@ -81,27 +76,6 @@ void cppcoro::async_semaphore::set() noexcept
 	resume_waiters_if_locked(m_state.fetch_add(local::set_increment, std::memory_order_acq_rel));
 }
 
-void cppcoro::async_auto_reset_event::set() noexcept
-{
-	std::uint64_t oldState = m_state.load(std::memory_order_relaxed);
-	do
-	{
-		if (local::get_set_count(oldState) > local::get_waiter_count(oldState))
-		{
-			// Already set.
-			return;
-		}
-
-		// Increment the set-count
-	} while (!m_state.compare_exchange_weak(
-		oldState,
-		oldState + local::set_increment,
-		std::memory_order_acq_rel,
-		std::memory_order_acquire));
-
-	resume_waiters_if_locked(oldState);
-}
-
 void cppcoro::async_semaphore::resume_waiters_if_locked(const std::uint64_t oldState) const noexcept
 {
 	// Did we transition from non-zero waiters and zero set-count
@@ -112,24 +86,6 @@ void cppcoro::async_semaphore::resume_waiters_if_locked(const std::uint64_t oldS
 		// We acquired the lock.
 		resume_waiters(oldState + local::set_increment);
 	}
-}
-
-void cppcoro::async_auto_reset_event::reset() noexcept
-{
-	std::uint64_t oldState = m_state.load(std::memory_order_relaxed);
-	while (local::get_set_count(oldState) > local::get_waiter_count(oldState))
-	{
-		if (m_state.compare_exchange_weak(
-			oldState,
-			oldState - local::set_increment,
-			std::memory_order_relaxed))
-		{
-			// Successfully reset.
-			return;
-		}
-	}
-
-	// Not set. Nothing to do.
 }
 
 void cppcoro::async_semaphore::resume_waiters(

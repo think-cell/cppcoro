@@ -57,17 +57,14 @@ namespace cppcoro
 		/// or inside another thread's call to 'operator co_await()'.
 		async_semaphore_acquire_operation operator co_await() const noexcept;
 
-		/// Set the state of the event to 'set'.
+		/// Release count number of resources.
 		///
-		/// If there are pending coroutines awaiting the event then one
-		/// pending coroutine is resumed and the state is immediately
-		/// set back to the 'not set' state.
-		///
-		/// This operation is a no-op if the event was already 'set'.
-		void set() noexcept;
+		/// If there are pending coroutines awaiting resources then
+		/// pending coroutines are resumed.
+		void release(std::uint32_t count = 1) noexcept;
 
 	protected:
-		void resume_waiters_if_locked(const std::uint64_t oldState) const noexcept;
+		void resume_waiters_if_locked(const std::uint64_t oldState, const std::uint32_t count) const noexcept;
 
 		// Bits 0-31  - Set count
 		// Bits 32-63 - Waiter count

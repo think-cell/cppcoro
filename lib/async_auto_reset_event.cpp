@@ -33,7 +33,7 @@ void cppcoro::async_auto_reset_event::set() noexcept
 		std::memory_order_acq_rel,
 		std::memory_order_acquire));
 
-	resume_waiters_if_locked(oldState);
+	resume_waiters_if_locked(oldState, 1);
 }
 
 void cppcoro::async_auto_reset_event::reset() noexcept

@@ -45,20 +45,23 @@ cppcoro::async_semaphore::operator co_await() const noexcept
 	return async_semaphore_acquire_operation{ *this };
 }
 
-void cppcoro::async_semaphore::set() noexcept
+void cppcoro::async_semaphore::release(std::uint32_t count) noexcept
 {
-	resume_waiters_if_locked(m_state.fetch_add(async_semaphore_detail::set_increment, std::memory_order_acq_rel));
+	if(0 < count) {
+		resume_waiters_if_locked(m_state.fetch_add(count * async_semaphore_detail::set_increment, std::memory_order_acq_rel), count);
+	}
 }
 
-void cppcoro::async_semaphore::resume_waiters_if_locked(const std::uint64_t oldState) const noexcept
+void cppcoro::async_semaphore::resume_waiters_if_locked(const std::uint64_t oldState, std::uint32_t count) const noexcept
 {
 	// Did we transition from non-zero waiters and zero set-count
 	// to non-zero set-count?
 	// If so then we acquired the lock and are responsible for resuming waiters.
+	assert(count > 0);
 	if (oldState != 0 && async_semaphore_detail::get_set_count(oldState) == 0)
 	{
 		// We acquired the lock.
-		resume_waiters(oldState + async_semaphore_detail::set_increment);
+		resume_waiters(oldState + count * async_semaphore_detail::set_increment);
 	}
 }
 
@@ -125,7 +128,7 @@ void cppcoro::async_semaphore::resume_waiters(
 		// so we can now decrement both the waiter and set count.
 		//
 		// However, there might have been more waiters or more calls to
-		// set() since we last checked so we need to go around again if
+		// release() since we last checked so we need to go around again if
 		// there are still waiters that are ready to resume after decrementing
 		// both the 'waiter count' and 'set count' by 'waiterCountToResume'.
 		const std::uint64_t delta =
@@ -205,7 +208,7 @@ bool cppcoro::async_semaphore_acquire_operation::await_suspend(
 	// Needs to be 'release' so that our prior write to m_newWaiters is
 	// visible to anyone that acquires the lock.
 	// Needs to be 'acquire' in case we acquired the lock so we can see
-	// others' writes to m_newWaiters and writes prior to set() calls.
+	// others' writes to m_newWaiters and writes prior to release() calls.
 	const std::uint64_t oldState =
 		m_event->m_state.fetch_add(async_semaphore_detail::waiter_increment, std::memory_order_acq_rel);
 
@@ -225,6 +228,6 @@ bool cppcoro::async_semaphore_acquire_operation::await_suspend(
 	// Need 'acquire' semantics here in the case that another thread has
 	// concurrently dequeued us and scheduled us for resumption by decrementing
 	// the ref-count with 'release' semantics so that we see the writes prior
-	// to the 'set()' call that released this waiter.
+	// to the 'release()' call that released this waiter.
 	return m_refCount.fetch_sub(1, std::memory_order_acquire) != 1;
 }

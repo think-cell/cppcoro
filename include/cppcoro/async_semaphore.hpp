@@ -8,9 +8,33 @@
 #include <experimental/coroutine>
 #include <atomic>
 #include <cstdint>
+#include <algorithm>
 
 namespace cppcoro
 {
+	namespace async_semaphore_detail
+	{
+		// Some helpers for manipulating the 'm_state' value.
+
+		constexpr std::uint64_t set_increment = 1;
+		constexpr std::uint64_t waiter_increment = std::uint64_t(1) << 32;
+
+		constexpr std::uint32_t get_set_count(std::uint64_t state)
+		{
+			return static_cast<std::uint32_t>(state);
+		}
+
+		constexpr std::uint32_t get_waiter_count(std::uint64_t state)
+		{
+			return static_cast<std::uint32_t>(state >> 32);
+		}
+
+		constexpr std::uint32_t get_resumable_waiter_count(std::uint64_t state)
+		{
+			return std::min(get_set_count(state), get_waiter_count(state));
+		}
+	}
+
 	class async_auto_reset_event_operation;
 
 	class async_semaphore
@@ -83,7 +107,6 @@ namespace cppcoro
 		async_auto_reset_event_operation* m_next;
 		std::experimental::coroutine_handle<> m_awaiter;
 		std::atomic<std::uint32_t> m_refCount;
-
 	};
 }
 

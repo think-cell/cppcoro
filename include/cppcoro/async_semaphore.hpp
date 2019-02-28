@@ -46,16 +46,15 @@ namespace cppcoro
 
 		~async_semaphore();
 
-		/// Wait for the event to enter the 'set' state.
+		/// Acquire a resource.
 		///
-		/// If the event is already 'set' then the event is set to the 'not set'
-		/// state and the awaiting coroutine continues without suspending.
+		/// If a resource is already available, the awaiting coroutine continues without suspending.
 		/// Otherwise, the coroutine is suspended and later resumed when some
-		/// thread calls 'set()'.
+		/// thread calls 'release()'.
 		///
-		/// Note that the coroutine may be resumed inside a call to 'set()'
-		/// or inside another thread's call to 'operator co_await()'.
-		async_semaphore_acquire_operation operator co_await() const noexcept;
+		/// Note that the coroutine may be resumed inside a call to 'release()'
+		/// or inside another thread's call to 'acquire()'.
+		async_semaphore_acquire_operation acquire() const noexcept;
 
 		/// Release count number of resources.
 		///

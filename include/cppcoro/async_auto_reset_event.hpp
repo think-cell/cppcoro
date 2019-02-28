@@ -34,7 +34,7 @@ namespace cppcoro
 		///
 		/// Note that the coroutine may be resumed inside a call to 'set()'
 		/// or inside another thread's call to 'operator co_await()'.
-		using async_semaphore::operator co_await;
+		async_semaphore_acquire_operation operator co_await() const noexcept;
 
 		/// Set the state of the event to 'set'.
 		///

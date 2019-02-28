@@ -15,6 +15,12 @@ cppcoro::async_auto_reset_event::async_auto_reset_event(bool initiallySet) noexc
 {
 }
 
+cppcoro::async_semaphore_acquire_operation
+cppcoro::async_auto_reset_event::operator co_await() const noexcept
+{
+	return acquire();
+}
+
 void cppcoro::async_auto_reset_event::set() noexcept
 {
 	std::uint64_t oldState = m_state.load(std::memory_order_relaxed);

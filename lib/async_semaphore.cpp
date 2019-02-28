@@ -24,7 +24,7 @@ cppcoro::async_semaphore::~async_semaphore()
 }
 
 cppcoro::async_semaphore_acquire_operation
-cppcoro::async_semaphore::operator co_await() const noexcept
+cppcoro::async_semaphore::acquire() const noexcept
 {
 	std::uint64_t oldState = m_state.load(std::memory_order_relaxed);
 	if (async_semaphore_detail::get_set_count(oldState) > async_semaphore_detail::get_waiter_count(oldState))

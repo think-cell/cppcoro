@@ -11,7 +11,7 @@
 #include <algorithm>
 
 cppcoro::async_semaphore::async_semaphore(std::uint32_t initial) noexcept
-	: m_state(initial * async_semaphore_detail::resource_increment)
+	: m_state(async_semaphore_detail::decomposed_state(initial, 0).compose())
 	, m_newWaiters(nullptr)
 	, m_waiters(nullptr)
 {
@@ -23,16 +23,32 @@ cppcoro::async_semaphore::~async_semaphore()
 	assert(m_waiters == nullptr);
 }
 
+template<typename MemoryOrder, typename Func>
+void cppcoro::async_semaphore::modify_state(MemoryOrder memoryorder, Func func) const noexcept {
+	auto oldState = m_state.load(std::memory_order_relaxed);
+	for(;;) {
+		auto stateDecomposed=async_semaphore_detail::decomposed_state(oldState);
+		func(stateDecomposed);
+		if (m_state.compare_exchange_weak(
+			oldState,
+			stateDecomposed.compose(),
+			memoryorder,
+			std::memory_order_relaxed)) break;
+	}
+}
+
 cppcoro::async_semaphore_acquire_operation
 cppcoro::async_semaphore::acquire() const noexcept
 {
-	std::uint64_t oldState = m_state.load(std::memory_order_relaxed);
-	if (async_semaphore_detail::get_resource_count(oldState) > async_semaphore_detail::get_waiter_count(oldState))
+	auto oldState=m_state.load(std::memory_order_relaxed);
+	async_semaphore_detail::decomposed_state oldStateDecomposed(oldState);
+	if (oldStateDecomposed.m_resources > oldStateDecomposed.m_waiters)
 	{
 		// Try to synchronously acquire the event.
+		--oldStateDecomposed.m_resources;
 		if (m_state.compare_exchange_strong(
 			oldState,
-			oldState - async_semaphore_detail::resource_increment,
+			oldStateDecomposed.compose(),
 			std::memory_order_acquire,
 			std::memory_order_relaxed))
 		{
@@ -48,30 +64,30 @@ cppcoro::async_semaphore::acquire() const noexcept
 void cppcoro::async_semaphore::release(std::uint32_t count) noexcept
 {
 	if(0 < count) {
-		resume_waiters_if_locked(m_state.fetch_add(count * async_semaphore_detail::resource_increment, std::memory_order_acq_rel), count);
-	}
-}
+		bool resume;
+		std::uint32_t waiterCountToResume;
+		modify_state(std::memory_order_acq_rel, [&](auto& state) noexcept {
+			// Did we transition from non-zero waiters and zero set-count
+			// to non-zero set-count?
+			// If so then we acquired the lock and are responsible for resuming waiters.
+			resume = 0 == state.m_resources && 0 < state.m_waiters;
+			state.m_resources += count;
+			waiterCountToResume=state.resumable_waiter_count();
+		});
 
-void cppcoro::async_semaphore::resume_waiters_if_locked(const std::uint64_t oldState, std::uint32_t count) const noexcept
-{
-	// Did we transition from non-zero waiters and zero set-count
-	// to non-zero set-count?
-	// If so then we acquired the lock and are responsible for resuming waiters.
-	assert(count > 0);
-	if (oldState != 0 && async_semaphore_detail::get_resource_count(oldState) == 0)
-	{
-		// We acquired the lock.
-		resume_waiters(oldState + count * async_semaphore_detail::resource_increment);
+		if (resume)
+		{
+			// We acquired the lock.
+			resume_waiters(waiterCountToResume);
+		}
 	}
 }
 
 void cppcoro::async_semaphore::resume_waiters(
-	std::uint64_t initialState) const noexcept
+	std::uint32_t waiterCountToResume) const noexcept
 {
 	async_semaphore_acquire_operation* waitersToResumeList = nullptr;
 	async_semaphore_acquire_operation** waitersToResumeListEnd = &waitersToResumeList;
-
-	std::uint32_t waiterCountToResume = async_semaphore_detail::get_resumable_waiter_count(initialState);
 
 	assert(waiterCountToResume > 0);
 
@@ -130,20 +146,18 @@ void cppcoro::async_semaphore::resume_waiters(
 		// However, there might have been more waiters or more calls to
 		// release() since we last checked so we need to go around again if
 		// there are still waiters that are ready to resume after decrementing
-		// both the 'waiter count' and 'set count' by 'waiterCountToResume'.
-		const std::uint64_t delta =
-			std::uint64_t(waiterCountToResume) |
-			std::uint64_t(waiterCountToResume) << 32;
+		// both the 'waiter count' and 'resource count' by 'waiterCountToResume'.
 
 		// Needs to be 'release' as we're releasing the lock and anyone that
 		// subsequently acquires the lock needs to see our prior writes to
 		// m_waiters.
 		// Needs to be 'acquire' in the case that new waiters were added so
 		// that we see their prior writes to 'm_newWaiters'.
-		const std::uint64_t newState =
-			m_state.fetch_sub(delta, std::memory_order_acq_rel) - delta;
-
-		waiterCountToResume = async_semaphore_detail::get_resumable_waiter_count(newState);
+		modify_state(std::memory_order_acq_rel, [&](auto& state) noexcept {
+			state.m_resources -= waiterCountToResume;
+			state.m_waiters -= waiterCountToResume;
+			waiterCountToResume = state.resumable_waiter_count();
+		});
 	} while (waiterCountToResume > 0);
 
 	// Now resume all of the waiters we've dequeued.
@@ -209,15 +223,20 @@ bool cppcoro::async_semaphore_acquire_operation::await_suspend(
 	// visible to anyone that acquires the lock.
 	// Needs to be 'acquire' in case we acquired the lock so we can see
 	// others' writes to m_newWaiters and writes prior to release() calls.
-	const std::uint64_t oldState =
-		m_event->m_state.fetch_add(async_semaphore_detail::waiter_increment, std::memory_order_acq_rel);
-
-	if (oldState != 0 && async_semaphore_detail::get_waiter_count(oldState) == 0)
-	{
-		// We transitioned from non-zero set and zero waiters to
-		// non-zero set and non-zero waiters, so we acquired the lock
+	bool resume;
+	std::uint32_t waiterCountToResume;
+	m_event->modify_state(std::memory_order_acq_rel, [&](auto& state) noexcept {
+		// If we transition from non-zero set and zero waiters to
+		// non-zero set and non-zero waiters, we acquired the lock
 		// and thus responsibility for resuming waiters.
-		m_event->resume_waiters(oldState + async_semaphore_detail::waiter_increment);
+		resume = 0 == state.m_waiters && 0 < state.m_resources;
+		++state.m_waiters;
+		waiterCountToResume=state.resumable_waiter_count();
+	});
+
+	if (resume)
+	{
+		m_event->resume_waiters(waiterCountToResume);
 	}
 
 	// Decrement the ref-count to indicate that this waiter is now safe

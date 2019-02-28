@@ -16,23 +16,31 @@ namespace cppcoro
 	{
 		// Some helpers for manipulating the 'm_state' value.
 
-		constexpr std::uint64_t resource_increment = 1;
-		constexpr std::uint64_t waiter_increment = std::uint64_t(1) << 32;
+		struct decomposed_state final {
+			std::uint32_t m_resources;
 
-		constexpr std::uint32_t get_resource_count(std::uint64_t state)
-		{
-			return static_cast<std::uint32_t>(state);
-		}
+			std::uint32_t m_waiters;
 
-		constexpr std::uint32_t get_waiter_count(std::uint64_t state)
-		{
-			return static_cast<std::uint32_t>(state >> 32);
-		}
+			decomposed_state() = default;
 
-		constexpr std::uint32_t get_resumable_waiter_count(std::uint64_t state)
-		{
-			return std::min(get_resource_count(state), get_waiter_count(state));
-		}
+			explicit decomposed_state(std::uint64_t state) noexcept
+				: m_resources(static_cast<std::uint32_t>(state))
+				, m_waiters(static_cast<std::uint32_t>(state >> 32))
+			{}
+
+			explicit decomposed_state(std::uint32_t resources, std::uint32_t waiters) noexcept
+				: m_resources(resources)
+				, m_waiters(waiters)
+			{}
+
+			std::uint64_t compose() const noexcept {
+				return static_cast<std::uint64_t>(m_resources) | (static_cast<std::uint64_t>(m_waiters) << 32);
+			}
+
+			std::uint32_t resumable_waiter_count() const noexcept {
+				return std::min(m_resources, m_waiters);
+			}
+		};
 	}
 
 	class async_semaphore_acquire_operation;
@@ -63,17 +71,17 @@ namespace cppcoro
 		void release(std::uint32_t count = 1) noexcept;
 
 	protected:
-		void resume_waiters_if_locked(const std::uint64_t oldState, const std::uint32_t count) const noexcept;
+		void resume_waiters(std::uint32_t waiterCountToResume) const noexcept;
 
 		// Bits 0-31  - Resource count
 		// Bits 32-63 - Waiter count
 		mutable std::atomic<std::uint64_t> m_state;
 
 	private:
+		template<typename MemoryOrder, typename Func>
+		void modify_state(MemoryOrder memoryorder, Func func) const noexcept;
 
 		friend class async_semaphore_acquire_operation;
-
-		void resume_waiters(std::uint64_t initialState) const noexcept;
 
 		mutable std::atomic<async_semaphore_acquire_operation*> m_newWaiters;
 

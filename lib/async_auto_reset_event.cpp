@@ -24,38 +24,55 @@ cppcoro::async_auto_reset_event::operator co_await() const noexcept
 void cppcoro::async_auto_reset_event::set() noexcept
 {
 	std::uint64_t oldState = m_state.load(std::memory_order_relaxed);
+	async_semaphore_detail::decomposed_state oldStateDecomposed;
+	async_semaphore_detail::decomposed_state newStateDecomposed;
 	do
 	{
-		if (async_semaphore_detail::get_resource_count(oldState) > async_semaphore_detail::get_waiter_count(oldState))
+		oldStateDecomposed = async_semaphore_detail::decomposed_state(oldState);
+		if (oldStateDecomposed.m_resources > oldStateDecomposed.m_waiters)
 		{
 			// Already set.
 			return;
 		}
 
 		// Increment the set-count
+		newStateDecomposed=oldStateDecomposed;
+		++newStateDecomposed.m_resources;
 	} while (!m_state.compare_exchange_weak(
 		oldState,
-		oldState + async_semaphore_detail::resource_increment,
+		newStateDecomposed.compose(),
 		std::memory_order_acq_rel,
-		std::memory_order_acquire));
+		std::memory_order_relaxed));
 
-	resume_waiters_if_locked(oldState, 1);
+	// Did we transition from non-zero waiters and zero set-count
+	// to non-zero set-count?
+	// If so then we acquired the lock and are responsible for resuming waiters.
+	if (0 < oldStateDecomposed.m_waiters && 0 == oldStateDecomposed.m_resources)
+	{
+		// We acquired the lock.
+		resume_waiters(newStateDecomposed.resumable_waiter_count());
+	}
 }
 
 void cppcoro::async_auto_reset_event::reset() noexcept
 {
 	std::uint64_t oldState = m_state.load(std::memory_order_relaxed);
-	while (async_semaphore_detail::get_resource_count(oldState) > async_semaphore_detail::get_waiter_count(oldState))
+	async_semaphore_detail::decomposed_state oldStateDecomposed;
+	async_semaphore_detail::decomposed_state newStateDecomposed;
+	do
 	{
-		if (m_state.compare_exchange_weak(
-			oldState,
-			oldState - async_semaphore_detail::resource_increment,
-			std::memory_order_relaxed))
+		oldStateDecomposed = async_semaphore_detail::decomposed_state(oldState);
+		if (oldStateDecomposed.m_resources <= oldStateDecomposed.m_waiters)
 		{
-			// Successfully reset.
+			// Not set. Nothing to do.
 			return;
 		}
-	}
 
-	// Not set. Nothing to do.
+		// Decrement the resource count
+		newStateDecomposed=oldStateDecomposed;
+		--newStateDecomposed.m_resources;
+	} while (!m_state.compare_exchange_weak(
+		oldState,
+		newStateDecomposed.compose(),
+		std::memory_order_relaxed));
 }

@@ -26,7 +26,7 @@ void cppcoro::async_auto_reset_event::set() noexcept
 	std::uint64_t oldState = m_state.load(std::memory_order_relaxed);
 	do
 	{
-		if (async_semaphore_detail::get_set_count(oldState) > async_semaphore_detail::get_waiter_count(oldState))
+		if (async_semaphore_detail::get_resource_count(oldState) > async_semaphore_detail::get_waiter_count(oldState))
 		{
 			// Already set.
 			return;
@@ -35,7 +35,7 @@ void cppcoro::async_auto_reset_event::set() noexcept
 		// Increment the set-count
 	} while (!m_state.compare_exchange_weak(
 		oldState,
-		oldState + async_semaphore_detail::set_increment,
+		oldState + async_semaphore_detail::resource_increment,
 		std::memory_order_acq_rel,
 		std::memory_order_acquire));
 
@@ -45,11 +45,11 @@ void cppcoro::async_auto_reset_event::set() noexcept
 void cppcoro::async_auto_reset_event::reset() noexcept
 {
 	std::uint64_t oldState = m_state.load(std::memory_order_relaxed);
-	while (async_semaphore_detail::get_set_count(oldState) > async_semaphore_detail::get_waiter_count(oldState))
+	while (async_semaphore_detail::get_resource_count(oldState) > async_semaphore_detail::get_waiter_count(oldState))
 	{
 		if (m_state.compare_exchange_weak(
 			oldState,
-			oldState - async_semaphore_detail::set_increment,
+			oldState - async_semaphore_detail::resource_increment,
 			std::memory_order_relaxed))
 		{
 			// Successfully reset.

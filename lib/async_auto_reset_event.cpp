@@ -47,6 +47,7 @@ void cppcoro::async_auto_reset_event::set() noexcept
 	// Did we transition from non-zero waiters and zero set-count
 	// to non-zero set-count?
 	// If so then we acquired the lock and are responsible for resuming waiters.
+	assert(0 <= oldStateDecomposed.m_resources);
 	if (0 < oldStateDecomposed.m_waiters && 0 == oldStateDecomposed.m_resources)
 	{
 		// We acquired the lock.

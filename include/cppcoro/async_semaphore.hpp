@@ -17,27 +17,27 @@ namespace cppcoro
 		// Some helpers for manipulating the 'm_state' value.
 
 		struct decomposed_state final {
-			std::uint32_t m_resources;
+			std::int32_t m_resources;
 
-			std::uint32_t m_waiters;
+			std::int32_t m_waiters;
 
 			decomposed_state() = default;
 
 			explicit decomposed_state(std::uint64_t state) noexcept
-				: m_resources(static_cast<std::uint32_t>(state))
-				, m_waiters(static_cast<std::uint32_t>(state >> 32))
+				: m_resources(static_cast<std::int32_t>(static_cast<std::uint32_t>(state)))
+				, m_waiters(static_cast<std::int32_t>(static_cast<std::uint32_t>(state >> 32)))
 			{}
 
-			explicit decomposed_state(std::uint32_t resources, std::uint32_t waiters) noexcept
+			explicit decomposed_state(std::int32_t resources, std::int32_t waiters) noexcept
 				: m_resources(resources)
 				, m_waiters(waiters)
 			{}
 
 			std::uint64_t compose() const noexcept {
-				return static_cast<std::uint64_t>(m_resources) | (static_cast<std::uint64_t>(m_waiters) << 32);
+				return static_cast<std::uint64_t>(static_cast<std::uint32_t>(m_resources)) | (static_cast<std::uint64_t>(static_cast<std::uint32_t>(m_waiters)) << 32);
 			}
 
-			std::uint32_t resumable_waiter_count() const noexcept {
+			std::int32_t resumable_waiter_count() const noexcept {
 				return std::min(m_resources, m_waiters);
 			}
 		};
@@ -50,7 +50,7 @@ namespace cppcoro
 	public:
 
 		/// Initialise the semaphore to have initial resources.
-		async_semaphore(std::uint32_t initial) noexcept;
+		async_semaphore(std::int32_t initial) noexcept;
 
 		~async_semaphore();
 
@@ -68,10 +68,13 @@ namespace cppcoro
 		///
 		/// If there are pending coroutines awaiting resources then
 		/// pending coroutines are resumed.
-		void release(std::uint32_t count = 1) noexcept;
+		void release(std::int32_t count = 1) noexcept;
+
+		/// Retires resources, either removing them immediately or as soon as they are released.
+		void retire(std::int32_t count) noexcept;
 
 	protected:
-		void resume_waiters(std::uint32_t waiterCountToResume) const noexcept;
+		void resume_waiters(std::int32_t waiterCountToResume) const noexcept;
 
 		// Bits 0-31  - Resource count
 		// Bits 32-63 - Waiter count

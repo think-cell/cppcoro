@@ -10,7 +10,7 @@
 #include <cassert>
 #include <algorithm>
 
-cppcoro::async_semaphore::async_semaphore(std::uint32_t initial) noexcept
+cppcoro::async_semaphore::async_semaphore(std::int32_t initial) noexcept
 	: m_state(async_semaphore_detail::decomposed_state(initial, 0).compose())
 	, m_newWaiters(nullptr)
 	, m_waiters(nullptr)
@@ -61,17 +61,18 @@ cppcoro::async_semaphore::acquire() const noexcept
 	return async_semaphore_acquire_operation{ *this };
 }
 
-void cppcoro::async_semaphore::release(std::uint32_t count) noexcept
+void cppcoro::async_semaphore::release(std::int32_t count) noexcept
 {
 	if(0 < count) {
 		bool resume;
-		std::uint32_t waiterCountToResume;
+		std::int32_t waiterCountToResume;
 		modify_state(std::memory_order_acq_rel, [&](auto& state) noexcept {
 			// Did we transition from non-zero waiters and zero set-count
 			// to non-zero set-count?
 			// If so then we acquired the lock and are responsible for resuming waiters.
-			resume = 0 == state.m_resources && 0 < state.m_waiters;
+			resume = state.m_resources <= 0 && 0 < state.m_waiters;
 			state.m_resources += count;
+			resume = resume && 0 < state.m_resources;
 			waiterCountToResume=state.resumable_waiter_count();
 		});
 
@@ -83,8 +84,15 @@ void cppcoro::async_semaphore::release(std::uint32_t count) noexcept
 	}
 }
 
+void cppcoro::async_semaphore::retire(std::int32_t count) noexcept
+{
+	modify_state(std::memory_order_relaxed, [&](auto& state) noexcept {
+		state.m_resources -= count; // may become negative
+	});
+}
+
 void cppcoro::async_semaphore::resume_waiters(
-	std::uint32_t waiterCountToResume) const noexcept
+	std::int32_t waiterCountToResume) const noexcept
 {
 	async_semaphore_acquire_operation* waitersToResumeList = nullptr;
 	async_semaphore_acquire_operation** waitersToResumeListEnd = &waitersToResumeList;
@@ -95,7 +103,7 @@ void cppcoro::async_semaphore::resume_waiters(
 	{
 		// Dequeue 'waiterCountToResume' from m_waiters/m_newWaiters and
 		// push them onto 'waitersToResumeList'.
-		for (std::uint32_t i = 0; i < waiterCountToResume; ++i)
+		for (std::int32_t i = 0; i < waiterCountToResume; ++i)
 		{
 			if (m_waiters == nullptr)
 			{
@@ -224,7 +232,7 @@ bool cppcoro::async_semaphore_acquire_operation::await_suspend(
 	// Needs to be 'acquire' in case we acquired the lock so we can see
 	// others' writes to m_newWaiters and writes prior to release() calls.
 	bool resume;
-	std::uint32_t waiterCountToResume;
+	std::int32_t waiterCountToResume;
 	m_event->modify_state(std::memory_order_acq_rel, [&](auto& state) noexcept {
 		// If we transition from non-zero set and zero waiters to
 		// non-zero set and non-zero waiters, we acquired the lock

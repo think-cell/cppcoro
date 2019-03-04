@@ -1,0 +1,182 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build" ToolsVersion="15.0">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="TestRelease|Win32">
+      <Configuration>TestRelease</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="TestRelease|x64">
+      <Configuration>TestRelease</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{2CEB8FB6-7558-44F4-BA08-3344D8A02C7C}</ProjectGuid>
+    <RootNamespace>cppcoro</RootNamespace>
+    <Keyword>Win32Proj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props"/>
+  <Import Project="$(SolutionDir)CommonConfig.props"/>
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props"/>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(SolutionDir)CommonDefaults.props"/>
+    <Import Project="$(SolutionDir)StaticLibDefaults.props"/>
+  </ImportGroup>
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+  </PropertyGroup>
+  <PropertyGroup>
+    <IncludePath>$(ProjectDir)include;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PrecompiledHeader/>
+      <DisableSpecificWarnings/>
+      <AdditionalOptions>/await %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets"/>
+  <Target Name="Lib"/>
+  <!-- Supresses .lib file generation. Works only for static libraries. -->
+  <ItemGroup>
+    <ClInclude Include="include\cppcoro\async_auto_reset_event.hpp"/>
+    <ClInclude Include="include\cppcoro\async_generator.hpp"/>
+    <ClInclude Include="include\cppcoro\async_latch.hpp"/>
+    <ClInclude Include="include\cppcoro\async_manual_reset_event.hpp"/>
+    <ClInclude Include="include\cppcoro\async_mutex.hpp"/>
+    <ClInclude Include="include\cppcoro\async_scope.hpp"/>
+    <ClInclude Include="include\cppcoro\async_semaphore.hpp"/>
+    <ClInclude Include="include\cppcoro\awaitable_traits.hpp"/>
+    <ClInclude Include="include\cppcoro\broken_promise.hpp"/>
+    <ClInclude Include="include\cppcoro\cancellation_registration.hpp"/>
+    <ClInclude Include="include\cppcoro\cancellation_source.hpp"/>
+    <ClInclude Include="include\cppcoro\cancellation_token.hpp"/>
+    <ClInclude Include="include\cppcoro\config.hpp"/>
+    <ClInclude Include="include\cppcoro\detail\any.hpp"/>
+    <ClInclude Include="include\cppcoro\detail\get_awaiter.hpp"/>
+    <ClInclude Include="include\cppcoro\detail\is_awaiter.hpp"/>
+    <ClInclude Include="include\cppcoro\detail\lightweight_manual_reset_event.hpp"/>
+    <ClInclude Include="include\cppcoro\detail\manual_lifetime.hpp"/>
+    <ClInclude Include="include\cppcoro\detail\remove_rvalue_reference.hpp"/>
+    <ClInclude Include="include\cppcoro\detail\sync_wait_task.hpp"/>
+    <ClInclude Include="include\cppcoro\detail\unwrap_reference.hpp"/>
+    <ClInclude Include="include\cppcoro\detail\void_value.hpp"/>
+    <ClInclude Include="include\cppcoro\detail\when_all_counter.hpp"/>
+    <ClInclude Include="include\cppcoro\detail\when_all_ready_awaitable.hpp"/>
+    <ClInclude Include="include\cppcoro\detail\when_all_task.hpp"/>
+    <ClInclude Include="include\cppcoro\detail\win32.hpp"/>
+    <ClInclude Include="include\cppcoro\detail\win32_overlapped_operation.hpp"/>
+    <ClInclude Include="include\cppcoro\file.hpp"/>
+    <ClInclude Include="include\cppcoro\file_buffering_mode.hpp"/>
+    <ClInclude Include="include\cppcoro\file_open_mode.hpp"/>
+    <ClInclude Include="include\cppcoro\file_read_operation.hpp"/>
+    <ClInclude Include="include\cppcoro\file_share_mode.hpp"/>
+    <ClInclude Include="include\cppcoro\file_write_operation.hpp"/>
+    <ClInclude Include="include\cppcoro\fmap.hpp"/>
+    <ClInclude Include="include\cppcoro\generator.hpp"/>
+    <ClInclude Include="include\cppcoro\inline_scheduler.hpp"/>
+    <ClInclude Include="include\cppcoro\io_service.hpp"/>
+    <ClInclude Include="include\cppcoro\is_awaitable.hpp"/>
+    <ClInclude Include="include\cppcoro\multi_producer_sequencer.hpp"/>
+    <ClInclude Include="include\cppcoro\net\ip_address.hpp"/>
+    <ClInclude Include="include\cppcoro\net\ip_endpoint.hpp"/>
+    <ClInclude Include="include\cppcoro\net\ipv4_address.hpp"/>
+    <ClInclude Include="include\cppcoro\net\ipv4_endpoint.hpp"/>
+    <ClInclude Include="include\cppcoro\net\ipv6_address.hpp"/>
+    <ClInclude Include="include\cppcoro\net\ipv6_endpoint.hpp"/>
+    <ClInclude Include="include\cppcoro\net\socket.hpp"/>
+    <ClInclude Include="include\cppcoro\net\socket_accept_operation.hpp"/>
+    <ClInclude Include="include\cppcoro\net\socket_connect_operation.hpp"/>
+    <ClInclude Include="include\cppcoro\net\socket_disconnect_operation.hpp"/>
+    <ClInclude Include="include\cppcoro\net\socket_recv_from_operation.hpp"/>
+    <ClInclude Include="include\cppcoro\net\socket_recv_operation.hpp"/>
+    <ClInclude Include="include\cppcoro\net\socket_send_operation.hpp"/>
+    <ClInclude Include="include\cppcoro\net\socket_send_to_operation.hpp"/>
+    <ClInclude Include="include\cppcoro\on_scope_exit.hpp"/>
+    <ClInclude Include="include\cppcoro\operation_cancelled.hpp"/>
+    <ClInclude Include="include\cppcoro\read_only_file.hpp"/>
+    <ClInclude Include="include\cppcoro\read_write_file.hpp"/>
+    <ClInclude Include="include\cppcoro\readable_file.hpp"/>
+    <ClInclude Include="include\cppcoro\recursive_generator.hpp"/>
+    <ClInclude Include="include\cppcoro\resume_on.hpp"/>
+    <ClInclude Include="include\cppcoro\round_robin_scheduler.hpp"/>
+    <ClInclude Include="include\cppcoro\schedule_on.hpp"/>
+    <ClInclude Include="include\cppcoro\sequence_barrier.hpp"/>
+    <ClInclude Include="include\cppcoro\sequence_range.hpp"/>
+    <ClInclude Include="include\cppcoro\sequence_traits.hpp"/>
+    <ClInclude Include="include\cppcoro\shared_task.hpp"/>
+    <ClInclude Include="include\cppcoro\single_consumer_async_auto_reset_event.hpp"/>
+    <ClInclude Include="include\cppcoro\single_consumer_event.hpp"/>
+    <ClInclude Include="include\cppcoro\single_producer_sequencer.hpp"/>
+    <ClInclude Include="include\cppcoro\static_thread_pool.hpp"/>
+    <ClInclude Include="include\cppcoro\sync_wait.hpp"/>
+    <ClInclude Include="include\cppcoro\task.hpp"/>
+    <ClInclude Include="include\cppcoro\when_all.hpp"/>
+    <ClInclude Include="include\cppcoro\when_all_ready.hpp"/>
+    <ClInclude Include="include\cppcoro\writable_file.hpp"/>
+    <ClInclude Include="include\cppcoro\write_only_file.hpp"/>
+    <ClInclude Include="lib\auto_reset_event.hpp"/>
+    <ClInclude Include="lib\cancellation_state.hpp"/>
+    <ClInclude Include="lib\socket_helpers.hpp"/>
+    <ClInclude Include="lib\spin_mutex.hpp"/>
+    <ClInclude Include="lib\spin_wait.hpp"/>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="lib\async_auto_reset_event.cpp"/>
+    <ClCompile Include="lib\async_manual_reset_event.cpp"/>
+    <ClCompile Include="lib\async_mutex.cpp"/>
+    <ClCompile Include="lib\async_semaphore.cpp"/>
+    <ClCompile Include="lib\auto_reset_event.cpp"/>
+    <ClCompile Include="lib\cancellation_registration.cpp"/>
+    <ClCompile Include="lib\cancellation_source.cpp"/>
+    <ClCompile Include="lib\cancellation_state.cpp"/>
+    <ClCompile Include="lib\cancellation_token.cpp"/>
+    <ClCompile Include="lib\file.cpp"/>
+    <ClCompile Include="lib\file_read_operation.cpp"/>
+    <ClCompile Include="lib\file_write_operation.cpp"/>
+    <ClCompile Include="lib\io_service.cpp"/>
+    <ClCompile Include="lib\ip_address.cpp"/>
+    <ClCompile Include="lib\ip_endpoint.cpp"/>
+    <ClCompile Include="lib\ipv4_address.cpp"/>
+    <ClCompile Include="lib\ipv4_endpoint.cpp"/>
+    <ClCompile Include="lib\ipv6_address.cpp"/>
+    <ClCompile Include="lib\ipv6_endpoint.cpp"/>
+    <ClCompile Include="lib\lightweight_manual_reset_event.cpp"/>
+    <ClCompile Include="lib\read_only_file.cpp"/>
+    <ClCompile Include="lib\read_write_file.cpp"/>
+    <ClCompile Include="lib\readable_file.cpp"/>
+    <ClCompile Include="lib\socket.cpp"/>
+    <ClCompile Include="lib\socket_connect_operation.cpp"/>
+    <ClCompile Include="lib\socket_disconnect_operation.cpp"/>
+    <ClCompile Include="lib\socket_helpers.cpp"/>
+    <ClCompile Include="lib\socket_recv_from_operation.cpp"/>
+    <ClCompile Include="lib\socket_recv_operation.cpp"/>
+    <ClCompile Include="lib\socket_send_operation.cpp"/>
+    <ClCompile Include="lib\socket_send_to_operation.cpp"/>
+    <ClCompile Include="lib\spin_mutex.cpp"/>
+    <ClCompile Include="lib\spin_wait.cpp"/>
+    <ClCompile Include="lib\static_thread_pool.cpp"/>
+    <ClCompile Include="lib\win32.cpp"/>
+    <ClCompile Include="lib\writable_file.cpp"/>
+    <ClCompile Include="lib\write_only_file.cpp"/>
+  </ItemGroup>
+</Project>
